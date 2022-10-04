@@ -28,21 +28,27 @@ export class UserService {
   }
 
   async findAll(filter: FilterUser) {
-    let { skip, limit , ...result } = filter;
+    let { skip, limit, sort, ...result } = filter;
     let option = {};
     for (let key in result) {
       filter[key] !== '' ? (option[key] = filter[key]) : null;
     }
 
-    console.log(option);
+    // like query
+    if (option['username']) {
+      option['username'] = { $regex: `.*${option['username']}.*` };
+    }
+
+    sort === -1 ? sort : 1;
 
     const response = await this.userModel
       .find(option)
       .skip((skip - 1) * limit)
       .limit(limit)
+      .sort({ username: sort })
       .exec();
     const count = await this.userModel.count();
-    return { result, count, page: skip, lastPage: count / limit };
+    return { response, count, page: skip, lastPage: count / limit };
   }
 
   async findOne(id: string) {

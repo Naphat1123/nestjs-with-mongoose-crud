@@ -25,7 +25,7 @@ export class UserController {
   @Get()
   findAll(@Query() filter: FilterUser) {
     filter.limit = filter.limit || 2;
-    filter.skip = filter.skip || 2;
+    filter.skip = filter.skip || 1;
     return this.userService.findAll(filter);
   }
 
