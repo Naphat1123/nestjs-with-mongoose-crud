@@ -20,7 +20,7 @@ export class BaseFilterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
-  skip?: number;
+  page?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

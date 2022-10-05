@@ -8,13 +8,14 @@ import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUser } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User, UserDocument } from './schemas/user.entity';
+import { UsersDto } from './dto/users.dto';
+import { User, UserDocument } from './schemas/user.schema';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   async create(createUserDto: CreateUserDto) {
     const existUsername = await this.userModel
@@ -28,7 +29,7 @@ export class UserService {
   }
 
   async findAll(filter: FilterUser) {
-    let { skip, limit, sort, ...result } = filter;
+    let { page, limit, sort, ...result } = filter;
     let option = {};
     for (let key in result) {
       filter[key] !== '' ? (option[key] = filter[key]) : null;
@@ -36,19 +37,29 @@ export class UserService {
 
     // like query
     if (option['username']) {
-      option['username'] = { $regex: `.*${option['username']}.*` };
+      let search = option['username'];
+      option['username'] = { $regex: `${search}`, $options: "i" };
     }
 
     sort === -1 ? sort : 1;
 
     const response = await this.userModel
       .find(option)
-      .skip((skip - 1) * limit)
+      .skip((page - 1) * limit)
       .limit(limit)
       .sort({ username: sort })
+      .lean()
       .exec();
     const count = await this.userModel.count();
-    return { response, count, page: skip, lastPage: count / limit };
+
+    const userDto: UsersDto[] = response.map((value) => {
+      return {
+        ...value,
+        id: value._id,
+      } as UsersDto
+    })
+
+    return { response: userDto, count, page: +page, lastPage: Math.ceil(count / limit) };
   }
 
   async findOne(id: string) {
@@ -56,18 +67,25 @@ export class UserService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    const existUser = await this.userModel.findOne({ _id: id });
-    if (!existUser) throw new NotFoundException(`Not found user id ${id}`);
+    //validate exist user
+    await this.validateExistUser(id)
 
     const result = await this.userModel.findByIdAndUpdate(id, updateUserDto, {
       new: true,
-    });
-    console.log(result);
-
-    return result;
+    }).lean().exec();
+    const { __v, _id, ...all } = result
+    return {
+      ...all,
+      id: _id
+    } as UsersDto
   }
 
-  remove(id: number) {
+  remove(id: string) {
     return `This action removes a #${id} user`;
+  }
+
+  private async validateExistUser(id: string): Promise<void> {
+    const existUser = await this.userModel.findOne({ _id: id });
+    if (!existUser) throw new NotFoundException(`Not found user id ${id}`);
   }
 }
