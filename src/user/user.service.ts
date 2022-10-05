@@ -66,6 +66,10 @@ export class UserService {
     return this.userModel.findOne({ _id: `${id}` }).exec();
   }
 
+  async findByUsername(username:string) {
+    return this.userModel.findOne({username}).lean().exec();
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto) {
     //validate exist user
     await this.validateExistUser(id)
